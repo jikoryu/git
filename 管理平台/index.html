@@ -3,64 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>商品价格走势查询</title>
+<title>价格走势</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f6fa;color:#333;min-height:100vh}
-/* ── 顶部 Banner ── */
-.banner{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;padding:14px 20px;text-align:center;font-size:13px}
-.banner a{color:#fbbf24;font-weight:600}
-/* ── 首页 ── */
-.home{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 46px);padding:24px}
-.home-card{width:100%;max-width:680px;text-align:center}
-/* 书签按钮区域 */
-.bookmarklet-section{background:#fff;border-radius:16px;padding:28px 24px;margin-bottom:28px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
-.bookmarklet-section .step-label{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.bookmarklet-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border-radius:12px;font-size:16px;font-weight:700;cursor:grab;text-decoration:none;transition:all .2s;box-shadow:0 4px 16px rgba(79,70,229,.3);margin-bottom:10px;border:none}
-.bookmarklet-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,.4)}
-.bookmarklet-btn:active{cursor:grabbing}
-.bookmarklet-hint{font-size:12px;color:#999;margin-top:4px}
-.divider-text{display:flex;align-items:center;gap:16px;margin:24px 0;color:#ccc;font-size:13px}
-.divider-text::before,.divider-text::after{content:'';flex:1;height:1px;background:#e8e8e8}
-/* URL 输入 */
-.url-input-wrap{display:flex;gap:8px;background:#fff;border-radius:14px;padding:6px;box-shadow:0 4px 24px rgba(0,0,0,.08);margin-bottom:10px}
-.url-input-wrap input{flex:1;height:52px;border:none;padding:0 16px;font-size:15px;outline:none;border-radius:10px}
-.url-input-wrap button{height:52px;padding:0 28px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
-.url-input-wrap button:hover{background:#4338ca}
-.platform-badges{display:flex;gap:10px;justify-content:center;margin-top:16px}
-.platform-badge{display:flex;align-items:center;gap:5px;font-size:12px;color:#999}
-.platform-badge .dot{width:8px;height:8px;border-radius:50%}
-.platform-badge .dot.jd{background:#E2231A}
-.platform-badge .dot.taobao{background:#FF5000}
-.platform-badge .dot.pdd{background:#E02E24}
-.quick-links{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:20px}
-.quick-link{padding:7px 14px;background:#fff;border-radius:16px;font-size:12px;color:#666;cursor:pointer;border:1.5px solid #e8e8e8;transition:all .2s}
-.quick-link:hover{border-color:#4f46e5;color:#4f46e5}
-/* ── 结果页 ── */
-.result{display:none;flex-direction:column;min-height:100vh}
-.result-header{background:#fff;padding:14px 24px;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
-.result-header .back-btn{background:none;border:none;font-size:20px;cursor:pointer;color:#666;padding:4px 8px;border-radius:6px}
-.result-header .back-btn:hover{background:#f5f5f5}
-.result-body{flex:1;max-width:900px;width:100%;margin:0 auto;padding:24px 20px 60px}
+.container{max-width:900px;margin:0 auto;padding:24px 20px 60px}
 /* 商品信息 */
 .product-hero{display:flex;gap:20px;background:#fff;border-radius:14px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04);align-items:center}
 .product-hero .img-box{width:140px;height:140px;border-radius:10px;background:#fafafa;display:flex;align-items:center;justify-content:center;font-size:72px;flex-shrink:0}
 .product-hero .info{flex:1;min-width:0}
-.product-hero h2{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:6px}
+.product-hero h1{font-size:18px;font-weight:600;line-height:1.5;margin-bottom:6px}
 .product-hero .meta{font-size:13px;color:#999;margin-bottom:8px}
 .product-hero .meta .plat-tag{display:inline-block;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;margin-right:8px}
-.product-hero .hero-price{font-size:30px;font-weight:800;color:#e53935}
+.product-hero .price-current{font-size:32px;font-weight:800;color:#e53935}
+.product-hero .source-link{font-size:12px;color:#999;margin-top:4px}
+.product-hero .source-link a{color:#4f46e5;text-decoration:none}
+.product-hero .source-link a:hover{text-decoration:underline}
+/* 概览卡 */
 .price-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
 .price-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-.price-card .label{font-size:11px;color:#999;margin-bottom:4px;text-transform:uppercase}
+.price-card .label{font-size:11px;color:#999;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
 .price-card .value{font-size:22px;font-weight:700}
 .price-card .change{font-size:11px;margin-top:4px}
+/* 图表 */
 .chart-box{background:#fff;border-radius:14px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.chart-box h3{font-size:15px;font-weight:600;margin-bottom:16px}
-.chart-wrap{position:relative;height:300px}
+.chart-box h2{font-size:15px;font-weight:600;margin-bottom:16px}
+.chart-wrap{position:relative;height:320px}
+/* 表格 */
 .table-box{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.04)}
-.table-box h3{font-size:15px;font-weight:600;padding:18px 20px;border-bottom:1px solid #f0f0f0}
+.table-box h2{font-size:15px;font-weight:600;padding:18px 20px;border-bottom:1px solid #f0f0f0}
 .table-box table{width:100%;border-collapse:collapse}
 .table-box th{padding:10px 20px;font-size:11px;color:#999;font-weight:500;text-align:left;background:#fafafa}
 .table-box td{padding:10px 20px;border-bottom:1px solid #f5f5f5;font-size:13px}
@@ -68,133 +40,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;b
 .tag{display:inline-block;padding:2px 6px;border-radius:10px;font-size:11px;font-weight:600}
 .tag.down{background:#ffebee;color:#c62828}
 .tag.up{background:#e8f5e9;color:#2e7d32}
-/* 历史 */
-.history-section{margin-top:32px;width:100%;max-width:680px}
-.history-section h3{font-size:14px;font-weight:600;margin-bottom:10px;color:#888}
-.history-item{display:flex;align-items:center;gap:12px;background:#fff;border-radius:10px;padding:12px 16px;cursor:pointer;border:1.5px solid transparent;transition:all .2s;margin-bottom:6px}
-.history-item:hover{border-color:#4f46e5}
-.history-item .h-icon{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:24px;background:#fafafa;flex-shrink:0}
-.history-item .h-title{flex:1;font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.history-item .h-platform{font-size:11px;color:#999;margin-right:8px}
-.history-item .h-date{font-size:11px;color:#bbb}
-.loading-overlay{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px}
-.spinner{width:40px;height:40px;border:3px solid #e0e0e0;border-top-color:#4f46e5;border-radius:50%;animation:spin .7s linear infinite;margin-bottom:16px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-overlay p{color:#999;font-size:14px}
-/* 首次使用提示 */
-.setup-guide{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px 20px;margin-bottom:20px;font-size:13px;color:#92400e;text-align:left;line-height:1.8}
-.setup-guide strong{color:#78350f}
+/* 错误 */
+.error-box{max-width:500px;margin:80px auto;background:#fff;border-radius:14px;padding:40px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.error-box .icon{font-size:48px;margin-bottom:12px}
+.error-box p{color:#999;margin-bottom:16px;line-height:1.6}
 @media(max-width:640px){
   .price-cards{grid-template-columns:repeat(2,1fr)}
   .product-hero{flex-direction:column;align-items:center;text-align:center}
-  .url-input-wrap{flex-direction:column;box-shadow:none;background:none;padding:0;gap:10px}
-  .url-input-wrap input{box-shadow:0 4px 24px rgba(0,0,0,.08);border-radius:14px}
-  .url-input-wrap button{border-radius:14px}
 }
 </style>
 </head>
 <body>
-
-<!-- ═══ 首页 ═══ -->
-<div class="home" id="homeScreen">
-  <div class="home-card">
-
-    <!-- 方式一：书签一键唤起 -->
-    <div class="bookmarklet-section">
-      <div class="step-label">🚀 方式一（推荐）· 一键查询</div>
-      <p style="font-size:14px;color:#666;margin-bottom:16px">把下方按钮拖到浏览器书签栏，逛电商时<strong>点一下</strong>即可查看价格走势</p>
-      <a class="bookmarklet-btn" id="bookmarkletBtn" href="javascript:void(0)" draggable="false">
-        📉 查看价格走势
-      </a>
-      <p class="bookmarklet-hint">👆 拖拽此按钮到浏览器书签栏</p>
-      <div id="setupGuide" class="setup-guide" style="display:none">
-        <strong>📌 首次使用步骤：</strong><br>
-        1️⃣ 确认已启动本地服务（双击运行「<strong>启动服务器.bat</strong>」）<br>
-        2️⃣ 确保浏览器<strong>书签栏可见</strong>（Chrome: Ctrl+Shift+B）<br>
-        3️⃣ 将上方蓝色按钮<strong>拖到书签栏</strong><br>
-        4️⃣ 逛京东/淘宝/拼多多时，点书签栏的「📉 查看价格走势」
-      </div>
-    </div>
-
-    <div class="divider-text">或手动粘贴链接</div>
-
-    <!-- 方式二：URL 输入 -->
-    <div class="url-input-wrap">
-      <input type="text" id="urlInput" placeholder="粘贴商品链接，例如：https://item.jd.com/100012043978.html" autofocus>
-      <button id="submitBtn" onclick="lookupProduct()">查询价格走势</button>
-    </div>
-    <div class="platform-badges">
-      <span class="platform-badge"><span class="dot jd"></span>京东</span>
-      <span class="platform-badge"><span class="dot taobao"></span>淘宝/天猫</span>
-      <span class="platform-badge"><span class="dot pdd"></span>拼多多</span>
-    </div>
-    <!-- 快捷体验 -->
-    <div class="quick-links">
-      <span class="quick-link" onclick="quickLookup('jd','100012043978','iPhone 16 Pro Max')">📱 iPhone 16 Pro Max</span>
-      <span class="quick-link" onclick="quickLookup('jd','100066471892','MacBook Pro M4')">💻 MacBook Pro M4</span>
-      <span class="quick-link" onclick="quickLookup('taobao','738000000000','华为 Mate 60 Pro')">📱 华为 Mate 60 Pro</span>
-      <span class="quick-link" onclick="quickLookup('pdd','3000000001','飞天茅台')">🍶 飞天茅台</span>
-      <span class="quick-link" onclick="quickLookup('jd','100090276589','戴森 V15')">🧹 戴森 V15</span>
-      <span class="quick-link" onclick="quickLookup('taobao','739000000000','PS5 Slim')">🎮 PS5 Slim</span>
-    </div>
-  </div>
-
-  <!-- 历史记录 -->
-  <div class="history-section" id="historySection"></div>
-</div>
-
-<!-- ═══ 结果页 ═══ -->
-<div class="result" id="resultScreen">
-  <div class="result-header">
-    <button class="back-btn" onclick="goHome()">← 返回</button>
-    <span style="font-weight:600;font-size:15px">📉 价格走势</span>
-  </div>
-  <div class="result-body" id="resultBody"></div>
-</div>
+<div class="container" id="content"></div>
 
 <script>
 // ═══════════════════════════════════════
-// 配置：检测当前运行环境
-// ═══════════════════════════════════════
-const IS_LOCAL_FILE = window.location.protocol === 'file:';
-const TOOL_URL = IS_LOCAL_FILE
-  ? window.location.href.split('?')[0]
-  : (window.location.origin + window.location.pathname);
-
-// ═══════════════════════════════════════
-// 动态生成书签（bookmarklet）
-// ═══════════════════════════════════════
-function generateBookmarklet() {
-  // 书签代码：获取当前页面 URL，如果匹配电商平台则跳转到价格工具
-  const code = `javascript:(function(){
-    var u=location.href;
-    var tool='${TOOL_URL}';
-    if(/jd\\.com|taobao\\.com|tmall\\.com|pinduoduo\\.com|yangkeduo\\.com/.test(u)){
-      window.open(tool+'?url='+encodeURIComponent(u),'_blank');
-    }else{
-      alert('请在京东、淘宝/天猫、拼多多的商品页面使用此工具');
-    }
-  })()`;
-
-  const btn = document.getElementById('bookmarkletBtn');
-  btn.href = code;
-  btn.setAttribute('draggable', 'true');
-
-  // 如果通过 HTTP 访问，显示设置指南
-  if (!IS_LOCAL_FILE) {
-    document.getElementById('setupGuide').style.display = 'none';
-  } else {
-    document.getElementById('setupGuide').style.display = 'block';
-  }
-}
-
-// ═══════════════════════════════════════
-// 平台检测
+// 平台检测 & 商品信息提取
 // ═══════════════════════════════════════
 const PLATFORM_CONFIG = {
-  jd:  { name:'京东', color:'#E2231A', domain:/jd\.com/ },
-  taobao: { name:'淘宝/天猫', color:'#FF5000', domain:/taobao\.com|tmall\.com/ },
-  pdd: { name:'拼多多', color:'#E02E24', domain:/pinduoduo\.com|yangkeduo\.com/ },
+  jd:      { name:'京东',     color:'#E2231A', domain:/jd\.com/ },
+  taobao:  { name:'淘宝/天猫', color:'#FF5000', domain:/taobao\.com|tmall\.com/ },
+  pdd:     { name:'拼多多',    color:'#E02E24', domain:/pinduoduo\.com|yangkeduo\.com/ },
 };
 
 function detectPlatform(url) {
@@ -221,7 +87,7 @@ function extractProductId(url, platform) {
 }
 
 // ═══════════════════════════════════════
-// 价格生成
+// 模拟价格历史（真实场景接入平台API）
 // ═══════════════════════════════════════
 function generatePriceHistory(basePrice, days) {
   const data = [];
@@ -230,35 +96,40 @@ function generatePriceHistory(basePrice, days) {
   for (let i = days; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
-    const drift = (Math.random() - 0.48) * 0.04 * price;
-    const promoDay = (i % (13 + Math.floor(Math.random() * 5))) === 0 && i > 5;
-    const promoDrop = promoDay ? -(Math.random() * 0.08 * price) : 0;
-    price = Math.max(basePrice * 0.7, Math.min(basePrice * 1.3, price + drift + promoDrop));
+    const drift = (Math.random() - 0.48) * 0.05 * price;
+    const promoDay = (i > 3 && i % (11 + Math.floor(Math.random() * 7)) === 0);
+    const promoDrop = promoDay ? -(Math.random() * 0.1 * price) : 0;
+    price = Math.max(basePrice * 0.65, Math.min(basePrice * 1.35, price + drift + promoDrop));
     data.push({ date: d.toISOString().split('T')[0], price: Math.round(price * 100) / 100 });
   }
   return data;
 }
 
 // ═══════════════════════════════════════
-// 商品模板
+// 商品模板库
 // ═══════════════════════════════════════
 const PRODUCT_TEMPLATES = {
-  'jd:100012043978': { title:'iPhone 16 Pro Max 256GB 原色钛金属', shop:'Apple 京东自营旗舰店', icon:'📱', basePrice:9499 },
-  'jd:100066471892': { title:'MacBook Pro 14英寸 M4 Pro 24GB/512GB', shop:'Apple 京东自营旗舰店', icon:'💻', basePrice:14999 },
-  'jd:100090276589': { title:'戴森 V15 Detect 无绳吸尘器 2024款', shop:'戴森京东自营旗舰店', icon:'🧹', basePrice:4490 },
-  'jd:100012345678': { title:'三星 Galaxy S24 Ultra 12GB+256GB', shop:'三星京东自营旗舰店', icon:'📱', basePrice:8999 },
-  'jd:100023456789': { title:'小米14 Ultra 16GB+512GB 龙晶蓝', shop:'小米京东自营旗舰店', icon:'📱', basePrice:5999 },
-  'taobao:738000000000': { title:'华为 Mate 60 Pro 12GB+512GB', shop:'华为官方旗舰店', icon:'📱', basePrice:6999 },
-  'taobao:739000000000': { title:'索尼 PlayStation 5 Slim 光驱版 国行', shop:'PlayStation官方旗舰店', icon:'🎮', basePrice:3299 },
-  'taobao:740000000000': { title:'Nike Air Jordan 1 Retro High OG', shop:'Nike官方旗舰店', icon:'👟', basePrice:1299 },
-  'pdd:3000000001': { title:'茅台 飞天53度 500ml 酱香型白酒', shop:'酒仙网专营店', icon:'🍶', basePrice:2699 },
-  'pdd:3000000002': { title:'Switch OLED 马力欧红蓝 续航版', shop:'电玩地带', icon:'🎮', basePrice:1769 },
+  'jd:100012043978':   { title:'iPhone 16 Pro Max 256GB 原色钛金属',            shop:'Apple 京东自营旗舰店',   icon:'📱', basePrice:9499 },
+  'jd:100066471892':   { title:'MacBook Pro 14英寸 M4 Pro 24GB/512GB',         shop:'Apple 京东自营旗舰店',   icon:'💻', basePrice:14999 },
+  'jd:100090276589':   { title:'戴森 V15 Detect 无绳吸尘器 2024款',             shop:'戴森京东自营旗舰店',      icon:'🧹', basePrice:4490 },
+  'jd:100012345678':   { title:'三星 Galaxy S24 Ultra 12GB+256GB 钛灰',        shop:'三星京东自营旗舰店',      icon:'📱', basePrice:8999 },
+  'jd:100023456789':   { title:'小米14 Ultra 16GB+512GB 龙晶蓝',               shop:'小米京东自营旗舰店',      icon:'📱', basePrice:5999 },
+  'jd:100044444444':   { title:'AirPods Pro 第二代 MagSafe充电盒版',            shop:'Apple 京东自营旗舰店',   icon:'🎧', basePrice:1699 },
+  'jd:100055555555':   { title:'联想拯救者 Y9000P 2024 i9-14900HX RTX4060',    shop:'联想京东自营旗舰店',      icon:'💻', basePrice:8999 },
+  'taobao:738000000000': { title:'华为 Mate 60 Pro 12GB+512GB 雅丹黑',          shop:'华为官方旗舰店',          icon:'📱', basePrice:6999 },
+  'taobao:739000000000': { title:'索尼 PlayStation 5 Slim 光驱版 国行',         shop:'PlayStation官方旗舰店',   icon:'🎮', basePrice:3299 },
+  'taobao:740000000000': { title:'Nike Air Jordan 1 Retro High OG',            shop:'Nike官方旗舰店',          icon:'👟', basePrice:1299 },
+  'taobao:741000000000': { title:'大疆 DJI Mini 4 Pro 畅飞套装',                shop:'大疆官方旗舰店',          icon:'🚁', basePrice:4788 },
+  'taobao:742000000000': { title:'茅台 飞天53度 500ml 酱香型白酒',               shop:'茅台官方旗舰店',          icon:'🍶', basePrice:2699 },
+  'pdd:3000000001':     { title:'茅台 飞天53度 500ml 酱香型白酒',               shop:'酒仙网专营店',            icon:'🍶', basePrice:2599 },
+  'pdd:3000000002':     { title:'Switch OLED 马力欧红蓝 续航版',                shop:'电玩地带',               icon:'🎮', basePrice:1729 },
+  'pdd:3000000003':     { title:'乐高 机械组 兰博基尼 Sián FKP 37',            shop:'乐高专营店',             icon:'🏎️', basePrice:2499 },
 };
 
 function getDefaultTemplate(url, platform) {
-  const icons = ['📦','🛍️','🏷️','✨','🔥','💎','🎯','⭐'];
-  const titles = ['热门商品','畅销单品','爆款推荐','人气好物','精选商品','旗舰新品','口碑之选'];
-  const shops = ['品牌官方旗舰店','自营旗舰店','专营店','品牌专卖店'];
+  const icons = ['📦','🛍️','🏷️','🔥','💎','⭐','🎯','✨'];
+  const titles = ['精选热卖商品','人气爆款单品','旗舰店正品好物','当季主推商品','口碑畅销单品'];
+  const shops = ['品牌官方旗舰店','自营旗舰店','品牌专营店','官方专卖店'];
   return {
     title: titles[Math.floor(Math.random()*titles.length)],
     shop: shops[Math.floor(Math.random()*shops.length)],
@@ -268,78 +139,34 @@ function getDefaultTemplate(url, platform) {
 }
 
 // ═══════════════════════════════════════
-// 查询
+// 渲染价格走势页面
 // ═══════════════════════════════════════
-let currentProduct = null;
+function render(platform, productUrl, pid, tpl, history) {
+  const cfg = PLATFORM_CONFIG[platform];
+  const cur = history[history.length-1].price;
+  const lo  = Math.min(...history.map(h=>h.price));
+  const hi  = Math.max(...history.map(h=>h.price));
+  const pct = ((cur - history[0].price) / history[0].price * 100);
+  const amp = ((hi - lo) / lo * 100);
 
-async function lookupProduct(url) {
-  if (!url) {
-    url = document.getElementById('urlInput').value.trim();
-  }
-  if (!url) { alert('请粘贴商品链接'); return; }
+  document.title = `${tpl.title} - 价格走势`;
 
-  const platform = detectPlatform(url);
-  if (!platform) {
-    alert('未能识别该链接的平台，请使用京东、淘宝/天猫或拼多多的商品链接');
-    return;
-  }
-
-  const pid = extractProductId(url, platform);
-  const key = `${platform}:${pid}`;
-  const tpl = PRODUCT_TEMPLATES[key] || getDefaultTemplate(url, platform);
-  const history = generatePriceHistory(tpl.basePrice, 30);
-
-  currentProduct = {
-    platform, platformId: pid || 'unknown',
-    title: tpl.title, shop: tpl.shop, icon: tpl.icon,
-    url, priceHistory: history,
-    queriedAt: new Date().toISOString(),
-  };
-
-  saveToHistory(currentProduct);
-  showResult(currentProduct);
-}
-
-function quickLookup(platform, pid, title) {
-  const urls = {
-    jd: `https://item.jd.com/${pid}.html`,
-    taobao: `https://item.taobao.com/item.htm?id=${pid}`,
-    pdd: `https://mobile.yangkeduo.com/goods.html?goods_id=${pid}`,
-  };
-  const u = urls[platform] || '';
-  document.getElementById('urlInput').value = u;
-  lookupProduct(u);
-}
-
-// ═══════════════════════════════════════
-// 显示结果
-// ═══════════════════════════════════════
-function showResult(product) {
-  const cfg = PLATFORM_CONFIG[product.platform];
-  const h = product.priceHistory;
-  const cur = h[h.length-1].price;
-  const lo = Math.min(...h.map(x=>x.price));
-  const hi = Math.max(...h.map(x=>x.price));
-  const pct = ((cur - h[0].price) / h[0].price * 100);
-
-  document.getElementById('homeScreen').style.display = 'none';
-  document.getElementById('resultScreen').style.display = 'flex';
-
-  document.getElementById('resultBody').innerHTML = `
+  document.getElementById('content').innerHTML = `
     <div class="product-hero">
-      <div class="img-box">${product.icon}</div>
+      <div class="img-box">${tpl.icon}</div>
       <div class="info">
-        <h2>${product.title}</h2>
+        <h1>${tpl.title}</h1>
         <div class="meta">
           <span class="plat-tag" style="background:${cfg.color}">${cfg.name}</span>
-          ${product.shop} &nbsp;|&nbsp; ID: ${product.platformId}
+          ${tpl.shop}
         </div>
-        <div class="hero-price">¥${cur.toFixed(2)}</div>
-        <div style="font-size:12px;color:#999;margin-top:4px">
-          <a href="${product.url}" target="_blank" style="color:#4f46e5">🔗 查看原商品页面 →</a>
+        <div class="price-current">¥${cur.toFixed(2)}</div>
+        <div class="source-link">
+          <a href="${productUrl}" target="_blank">🔗 查看商品原页面 →</a>
         </div>
       </div>
     </div>
+
     <div class="price-cards">
       <div class="price-card">
         <div class="label">当前价格</div>
@@ -349,28 +176,30 @@ function showResult(product) {
       <div class="price-card">
         <div class="label">30天最低</div>
         <div class="value" style="color:#2e7d32">¥${lo.toFixed(2)}</div>
-        <div class="change" style="color:#2e7d32">低于现价 ¥${(cur-lo).toFixed(2)}</div>
+        <div class="change" style="color:#2e7d32">比现价低 ¥${(cur-lo).toFixed(2)}</div>
       </div>
       <div class="price-card">
         <div class="label">30天最高</div>
         <div class="value" style="color:#333">¥${hi.toFixed(2)}</div>
-        <div class="change" style="color:#e53935">高于现价 ¥${(hi-cur).toFixed(2)}</div>
+        <div class="change" style="color:#e53935">比现价高 ¥${(hi-cur).toFixed(2)}</div>
       </div>
       <div class="price-card">
         <div class="label">价格波动</div>
         <div class="value" style="color:#4f46e5">¥${(hi-lo).toFixed(2)}</div>
-        <div class="change">振幅 ${((hi-lo)/lo*100).toFixed(1)}%</div>
+        <div class="change">振幅 ${amp.toFixed(1)}%</div>
       </div>
     </div>
+
     <div class="chart-box">
-      <h3>📊 ${cfg.name}平台 · 近30天价格走势</h3>
+      <h2>📊 ${cfg.name}平台 · 近30天价格走势</h2>
       <div class="chart-wrap"><canvas id="priceChart"></canvas></div>
     </div>
+
     <div class="table-box">
-      <h3>📋 每日价格明细</h3>
+      <h2>📋 每日价格明细</h2>
       <div style="overflow-x:auto"><table>
         <thead><tr><th>日期</th><th>价格</th><th>变化</th><th>备注</th></tr></thead>
-        <tbody>${h.slice().reverse().map((x,i,a)=>{
+        <tbody>${history.slice().reverse().map((x,i,a)=>{
           const prev=a[i+1]; let ch='-';
           if(prev){const d=x.price-prev.price;
             if(d!==0)ch=`<span class="tag ${d<0?'down':'up'}">${d>0?'+':''}¥${d.toFixed(2)}</span>`;
@@ -383,8 +212,7 @@ function showResult(product) {
       </table></div>
     </div>`;
 
-  window.scrollTo(0,0);
-  setTimeout(drawChart,100,h);
+  setTimeout(drawChart, 100, history);
 }
 
 let chart=null;
@@ -399,7 +227,7 @@ function drawChart(history){
     data:{
       labels:history.map(h=>h.date.slice(5)),
       datasets:[{
-        label:'价格',data:history.map(h=>h.price),
+        data:history.map(h=>h.price),
         borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,0.06)',
         borderWidth:2.5,fill:true,tension:0.3,
         pointRadius:history.map(h=>h.price===lo||h.price===hi?5:1.5),
@@ -410,7 +238,7 @@ function drawChart(history){
     options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},
-        tooltip:{callbacks:{title:items=>'日期: '+history[items[0].dataIndex].date,label:ctx=>'¥'+ctx.parsed.y.toFixed(2)}}},
+        tooltip:{callbacks:{title:items=>history[items[0].dataIndex].date,label:ctx=>'¥'+ctx.parsed.y.toFixed(2)}}},
       scales:{
         x:{grid:{display:false},ticks:{maxTicksLimit:15,font:{size:10},color:'#999'}},
         y:{grid:{color:'#f0f0f0'},ticks:{font:{size:10},color:'#999',callback:v=>'¥'+v}},
@@ -421,61 +249,39 @@ function drawChart(history){
 }
 
 // ═══════════════════════════════════════
-// 历史 (localStorage)
+// 入口：从 ?url= 参数读取
 // ═══════════════════════════════════════
-function saveToHistory(p){
-  let h=JSON.parse(localStorage.getItem('price_history')||'[]');
-  h=h.filter(x=>x.url!==p.url);
-  h.unshift(p);h=h.slice(0,20);
-  localStorage.setItem('price_history',JSON.stringify(h));
-  renderHistory();
-}
-function renderHistory(){
-  const c=document.getElementById('historySection');
-  const h=JSON.parse(localStorage.getItem('price_history')||'[]');
-  if(!h.length){c.innerHTML='';return;}
-  c.innerHTML=`<h3>📋 最近查询</h3>`+h.map(x=>{
-    const cfg=PLATFORM_CONFIG[x.platform];
-    const cur=x.priceHistory[x.priceHistory.length-1].price;
-    return `<div class="history-item" onclick="lookupProduct('${x.url.replace(/'/g,"\\'")}')">
-      <div class="h-icon">${x.icon}</div>
-      <span class="h-title">${x.title}</span>
-      <span class="h-platform"><span style="color:${cfg.color};font-weight:600">${cfg.name}</span></span>
-      <span style="font-size:14px;font-weight:700;color:#e53935;margin-right:10px">¥${cur.toFixed(0)}</span>
-      <span class="h-date">${new Date(x.queriedAt).toLocaleDateString('zh-CN')}</span>
-    </div>`;
-  }).join('')+'<button onclick="clearHistory()" style="margin-top:12px;background:none;border:none;color:#bbb;font-size:12px;cursor:pointer">清除历史</button>';
-}
-function clearHistory(){
-  if(confirm('确定清除所有查询历史？')){localStorage.removeItem('price_history');renderHistory();}
-}
+(function main(){
+  const params = new URLSearchParams(window.location.search);
+  const productUrl = params.get('url');
 
-// ═══════════════════════════════════════
-// 导航
-// ═══════════════════════════════════════
-function goHome(){
-  document.getElementById('resultScreen').style.display='none';
-  document.getElementById('homeScreen').style.display='flex';
-  document.getElementById('urlInput').value='';
-  document.getElementById('urlInput').focus();
-  window.scrollTo(0,0);
-  renderHistory();
-}
-document.getElementById('urlInput').addEventListener('keydown',function(e){
-  if(e.key==='Enter')lookupProduct();
-});
+  if (!productUrl) {
+    document.getElementById('content').innerHTML = `
+      <div class="error-box">
+        <div class="icon">🔗</div>
+        <p>此页面需通过商品链接访问</p>
+        <p style="font-size:13px;color:#bbb">在京东/淘宝/拼多多商品页面，<br>点击油猴脚本注入的「📉 查看价格走势」按钮即可</p>
+      </div>`;
+    return;
+  }
 
-// ═══════════════════════════════════════
-// 初始化
-// ═══════════════════════════════════════
-generateBookmarklet();
-renderHistory();
+  const platform = detectPlatform(productUrl);
+  if (!platform) {
+    document.getElementById('content').innerHTML = `
+      <div class="error-box">
+        <div class="icon">⚠️</div>
+        <p>未能识别该链接对应的平台</p>
+        <p style="font-size:13px;color:#bbb">仅支持京东、淘宝/天猫、拼多多</p>
+      </div>`;
+    return;
+  }
 
-// 从 URL 参数直接查询（配合书签使用）
-(function(){
-  const p=new URLSearchParams(window.location.search);
-  const url=p.get('url');
-  if(url){lookupProduct(decodeURIComponent(url));}
+  const pid = extractProductId(productUrl, platform);
+  const key = `${platform}:${pid}`;
+  const tpl = PRODUCT_TEMPLATES[key] || getDefaultTemplate(productUrl, platform);
+  const history = generatePriceHistory(tpl.basePrice, 30);
+
+  render(platform, productUrl, pid, tpl, history);
 })();
 </script>
 </body>
