@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>商品价格追踪</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#333}
+.app{display:flex;height:100vh}
+/* 侧边栏 */
+.sidebar{width:340px;background:#fff;border-right:1px solid #e8e8e8;display:flex;flex-direction:column;flex-shrink:0}
+.sidebar-header{padding:20px;border-bottom:1px solid #f0f0f0}
+.sidebar-header h1{font-size:20px;font-weight:700;color:#1a1a2e}
+.sidebar-header p{font-size:12px;color:#999;margin-top:4px}
+.sidebar-search{padding:12px 16px;border-bottom:1px solid #f0f0f0}
+.sidebar-search input{width:100%;height:38px;border:1.5px solid #e0e0e0;border-radius:8px;padding:0 12px;font-size:14px;outline:none}
+.sidebar-search input:focus{border-color:#4f46e5}
+.platform-tabs{display:flex;gap:4px;padding:10px 16px;border-bottom:1px solid #f0f0f0}
+.platform-tab{padding:6px 14px;border-radius:16px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;cursor:pointer;color:#666;transition:all .2s}
+.platform-tab:hover{border-color:#4f46e5;color:#4f46e5}
+.platform-tab.active{background:#eef2ff;border-color:#4f46e5;color:#4f46e5;font-weight:600}
+.product-list{flex:1;overflow-y:auto;padding:8px}
+.product-item{display:flex;gap:12px;padding:12px;border-radius:10px;cursor:pointer;transition:all .15s;margin-bottom:4px;align-items:center}
+.product-item:hover{background:#f5f7ff}
+.product-item.active{background:#eef2ff;box-shadow:inset 0 0 0 1.5px #4f46e5}
+.product-item img{width:56px;height:56px;border-radius:8px;object-fit:contain;background:#fafafa;flex-shrink:0}
+.product-item .info{flex:1;min-width:0}
+.product-item .name{font-size:13px;font-weight:500;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.product-item .platform{font-size:10px;color:#999;margin-top:3px}
+.product-item .price{font-size:16px;font-weight:700;color:#e53935;margin-top:4px}
+.product-item .arrow{color:#ccc;font-size:18px;flex-shrink:0}
+/* 主内容区 */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.main-header{padding:20px 28px;background:#fff;border-bottom:1px solid #e8e8e8}
+.main-header h2{font-size:22px;font-weight:700}
+.main-header .meta{display:flex;gap:16px;margin-top:6px;font-size:13px;color:#999}
+.main-body{flex:1;overflow-y:auto;padding:24px 28px}
+/* 价格概览卡片 */
+.price-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.price-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.price-card .label{font-size:12px;color:#999;margin-bottom:4px}
+.price-card .value{font-size:24px;font-weight:700}
+.price-card .change{font-size:12px;margin-top:4px}
+.price-card .change.up{color:#e53935}
+.price-card .change.down{color:#2e7d32}
+/* 图表区 */
+.chart-container{background:#fff;border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:24px}
+.chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.chart-header h3{font-size:16px;font-weight:600}
+.chart-range{display:flex;gap:6px}
+.chart-range button{padding:5px 12px;border-radius:14px;border:1.5px solid #e0e0e0;background:#fff;font-size:12px;cursor:pointer;color:#666}
+.chart-range button.active{background:#4f46e5;color:#fff;border-color:#4f46e5}
+.chart-wrap{position:relative;height:300px}
+.chart-wrap canvas{width:100%!important}
+/* 价格表格 */
+.price-table{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.price-table h3{font-size:16px;font-weight:600;padding:18px 20px;border-bottom:1px solid #f0f0f0}
+.price-table table{width:100%;border-collapse:collapse}
+.price-table th{text-align:left;padding:10px 20px;font-size:11px;color:#999;font-weight:500;text-transform:uppercase;background:#fafafa}
+.price-table td{padding:10px 20px;border-bottom:1px solid #f5f5f5;font-size:13px}
+.price-table td.price-cell{font-weight:600}
+.price-table td .tag{display:inline-block;padding:2px 6px;border-radius:10px;font-size:11px;font-weight:600}
+.price-table td .tag.down{background:#ffebee;color:#c62828}
+.price-table td .tag.up{background:#e8f5e9;color:#2e7d32}
+/* 空状态 */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#999}
+.empty-state .icon{font-size:64px;margin-bottom:16px}
+.empty-state p{font-size:16px}
+.empty-state .sub{font-size:13px;color:#bbb;margin-top:4px}
+/* 加载 */
+.spinner{width:32px;height:32px;border:3px solid #e0e0e0;border-top-color:#4f46e5;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 响应式 */
+@media(max-width:768px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;max-height:45vh}
+  .price-cards{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 侧边栏 - 商品列表 -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1>📉 商品价格追踪</h1>
+      <p>点击商品查看30天价格走势</p>
+    </div>
+    <div class="sidebar-search">
+      <input type="text" id="searchInput" placeholder="搜索商品名称..." oninput="filterProducts()">
+    </div>
+    <div class="platform-tabs" id="platformTabs">
+      <button class="platform-tab active" data-platform="all" onclick="filterPlatform('all',this)">全部</button>
+      <button class="platform-tab" data-platform="jd" onclick="filterPlatform('jd',this)">京东</button>
+      <button class="platform-tab" data-platform="taobao" onclick="filterPlatform('taobao',this)">淘宝</button>
+      <button class="platform-tab" data-platform="pdd" onclick="filterPlatform('pdd',this)">拼多多</button>
+    </div>
+    <div class="product-list" id="productList"></div>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="main" id="mainContent">
+    <div class="empty-state">
+      <div class="icon">👈</div>
+      <p>请从左侧选择一个商品</p>
+      <p class="sub">点击商品即可查看近30天价格走势</p>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── 商品数据（模拟） ──
+const PLATFORM_NAMES = { jd:'京东', taobao:'淘宝', pdd:'拼多多' };
+const PLATFORM_COLORS = { jd:'#E2231A', taobao:'#FF5000', pdd:'#E02E24' };
+
+function generatePriceHistory(basePrice, days) {
+  const data = [];
+  let price = basePrice;
+  const now = new Date();
+  for (let i = days; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    // 随机波动 ±3%
+    const change = (Math.random() - 0.48) * 0.06 * price;
+    price = Math.max(price * 0.7, Math.min(price * 1.3, price + change));
+    data.push({ date: d.toISOString().split('T')[0], price: Math.round(price * 100) / 100 });
+  }
+  return data;
+}
+
+const PRODUCTS = [
+  { id:'1', platform:'jd', title:'iPhone 16 Pro Max 256GB 原色钛金属', image:'https://img14.360buyimg.com/n0/jfs/t1/237654/30/19415/67895/667a5c4fF6a4b8d78/abc.jpg', shop:'Apple 京东自营', priceHistory: generatePriceHistory(9499, 30) },
+  { id:'2', platform:'jd', title:'MacBook Pro 14英寸 M4 Pro芯片 24GB/512GB', image:'https://img14.360buyimg.com/n0/jfs/t1/186534/21/47891/56789/66b2f1c2F8d3e71b2/def.jpg', shop:'Apple 京东自营', priceHistory: generatePriceHistory(14999, 30) },
+  { id:'3', platform:'taobao', title:'索尼 PlayStation 5 Slim 光驱版 国行', image:'https://img.alicdn.com/imgextra/i3/2200794823456/O1CN01xKj8GQ1abcDEF123_!!2200794823456.jpg', shop:'索尼官方旗舰店', priceHistory: generatePriceHistory(3299, 30) },
+  { id:'4', platform:'jd', title:'戴森 V15 Detect 无绳吸尘器 2024款', image:'https://img14.360buyimg.com/n0/jfs/t1/174321/12/42876/45678/65f4a3b2F9c1e84d3/ghi.jpg', shop:'戴森京东自营', priceHistory: generatePriceHistory(4490, 30) },
+  { id:'5', platform:'pdd', title:'茅台 飞天53度 500ml 酱香型白酒', image:'https://img.pddpic.com/mms-goods/2024/08/15/abc123def456.jpg', shop:'酒仙网专营店', priceHistory: generatePriceHistory(2699, 30) },
+  { id:'6', platform:'taobao', title:'华为 Mate 60 Pro 12GB+512GB 雅丹黑', image:'https://img.alicdn.com/imgextra/i4/2616970884/O1CN01mN3p2F1abcdefg_!!2616970884.jpg', shop:'华为官方旗舰店', priceHistory: generatePriceHistory(6999, 30) },
+  { id:'7', platform:'jd', title:'AirPods Pro 第二代 MagSafe充电盒版', image:'https://img14.360buyimg.com/n0/jfs/t1/221456/30/17321/34567/663a8b2cF1d5e97a4/jkl.jpg', shop:'Apple 京东自营', priceHistory: generatePriceHistory(1699, 30) },
+  { id:'8', platform:'pdd', title:'乐高 机械组 兰博基尼 Sián FKP 37', image:'https://img.pddpic.com/mms-goods/2024/06/12/def789abc012.jpg', shop:'乐高专营店', priceHistory: generatePriceHistory(2599, 30) },
+  { id:'9', platform:'jd', title:'小米14 Ultra 16GB+512GB 龙晶蓝', image:'https://img14.360buyimg.com/n0/jfs/t1/198765/40/51234/56789/65d2c4e1F2a6b9d37/mno.jpg', shop:'小米京东自营', priceHistory: generatePriceHistory(5999, 30) },
+  { id:'10', platform:'taobao', title:'Nike Air Jordan 1 Retro High OG', image:'https://img.alicdn.com/imgextra/i2/2874391021/O1CN01qW8r5T2ghijklmn_!!2874391021.jpg', shop:'Nike官方旗舰店', priceHistory: generatePriceHistory(1299, 30) },
+  { id:'11', platform:'jd', title:'三星 Galaxy S24 Ultra 12GB+256GB 钛灰', image:'https://img14.360buyimg.com/n0/jfs/t1/212345/12/34567/45678/65a7c1b3F3b8d0e42/pqr.jpg', shop:'三星京东自营', priceHistory: generatePriceHistory(8999, 30) },
+  { id:'12', platform:'pdd', title:'Switch OLED 马力欧红蓝 续航版', image:'https://img.pddpic.com/mms-goods/2024/07/23/ghi456jkl789.jpg', shop:'电玩地带', priceHistory: generatePriceHistory(1769, 30) },
+];
+
+let activeProduct = null;
+let chart = null;
+let currentFilter = 'all';
+
+function getCurrentPrice(history) { return history[history.length-1].price; }
+function getLowestPrice(history) { return Math.min(...history.map(h=>h.price)); }
+function getHighestPrice(history) { return Math.max(...history.map(h=>h.price)); }
+function getPriceChange(history) {
+  const first = history[0].price;
+  const last = history[history.length-1].price;
+  return { diff: last - first, percent: ((last - first) / first * 100) };
+}
+
+function formatPrice(p) { return '¥' + p.toFixed(2); }
+
+// ── 渲染商品列表 ──
+function renderProductList(filter, searchText) {
+  const container = document.getElementById('productList');
+  let products = PRODUCTS;
+  if (filter && filter !== 'all') products = products.filter(p => p.platform === filter);
+  if (searchText) products = products.filter(p => p.title.toLowerCase().includes(searchText.toLowerCase()));
+
+  container.innerHTML = products.map(p => {
+    const price = getCurrentPrice(p.priceHistory);
+    const lowest = getLowestPrice(p.priceHistory);
+    const isActive = activeProduct && activeProduct.id === p.id;
+    const color = PLATFORM_COLORS[p.platform];
+    return `
+      <div class="product-item ${isActive ? 'active' : ''}" onclick="selectProduct('${p.id}')" id="item-${p.id}">
+        <img src="${p.image}" alt="${p.title}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 56 56%22><rect fill=%22%23f0f0f0%22 width=%2256%22 height=%2256%22/><text x=%2228%22 y=%2232%22 text-anchor=%22middle%22 fill=%22%23ccc%22 font-size=%2212%22>N/A</text></svg>'">
+        <div class="info">
+          <div class="name">${p.title}</div>
+          <div class="platform"><span style="color:${color};font-weight:600">${PLATFORM_NAMES[p.platform]}</span> · ${p.shop}</div>
+          <div class="price">${formatPrice(price)} ${lowest === price ? '<span style="font-size:11px;color:#2e7d32">（最低）</span>' : ''}</div>
+        </div>
+        <div class="arrow">›</div>
+      </div>`;
+  }).join('');
+}
+
+// ── 选择商品 ──
+function selectProduct(id) {
+  activeProduct = PRODUCTS.find(p => p.id === id);
+  renderProductList(currentFilter, document.getElementById('searchInput').value);
+  renderDetail();
+  document.querySelectorAll('.product-item').forEach(el => el.classList.remove('active'));
+  const itemEl = document.getElementById('item-' + id);
+  if (itemEl) { itemEl.classList.add('active'); itemEl.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+}
+
+// ── 渲染详情页 ──
+function renderDetail() {
+  if (!activeProduct) return;
+  const p = activeProduct;
+  const history = p.priceHistory;
+  const current = getCurrentPrice(history);
+  const lowest = getLowestPrice(history);
+  const highest = getHighestPrice(history);
+  const change = getPriceChange(history);
+  const color = PLATFORM_COLORS[p.platform];
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="main-header">
+      <h2>${p.title}</h2>
+      <div class="meta">
+        <span style="background:${color};color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">${PLATFORM_NAMES[p.platform]}</span>
+        <span>${p.shop}</span>
+        <span>数据更新：${history[history.length-1].date}</span>
+      </div>
+    </div>
+    <div class="main-body">
+      <div class="price-cards">
+        <div class="price-card">
+          <div class="label">当前价格</div>
+          <div class="value" style="color:#e53935">${formatPrice(current)}</div>
+          <div class="change ${change.diff < 0 ? 'down' : 'up'}">${change.diff >= 0 ? '↑' : '↓'} ${Math.abs(change.percent).toFixed(1)}% （30天）</div>
+        </div>
+        <div class="price-card">
+          <div class="label">30天最低</div>
+          <div class="value" style="color:#2e7d32">${formatPrice(lowest)}</div>
+          <div class="change down">比当前低 ${formatPrice(current - lowest)}</div>
+        </div>
+        <div class="price-card">
+          <div class="label">30天最高</div>
+          <div class="value" style="color:#333">${formatPrice(highest)}</div>
+          <div class="change up">比当前高 ${formatPrice(highest - current)}</div>
+        </div>
+        <div class="price-card">
+          <div class="label">价格波动</div>
+          <div class="value" style="color:#4f46e5">${formatPrice(highest - lowest)}</div>
+          <div class="change">${((highest - lowest) / lowest * 100).toFixed(1)}% 振幅</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-header">
+          <h3>📊 30天价格走势</h3>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </div>
+      <div class="price-table">
+        <h3>📋 每日价格明细</h3>
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr><th>日期</th><th>价格</th><th>变化</th><th>备注</th></tr></thead>
+            <tbody>
+              ${history.slice().reverse().map((h, i, arr) => {
+                const prev = arr[i+1];
+                let changeHtml = '-';
+                let tagClass = '';
+                if (prev) {
+                  const diff = h.price - prev.price;
+                  if (diff !== 0) {
+                    tagClass = diff < 0 ? 'down' : 'up';
+                    changeHtml = `<span class="tag ${tagClass}">${diff > 0 ? '+' : ''}${formatPrice(diff)}</span>`;
+                  } else {
+                    changeHtml = '<span style="color:#999">持平</span>';
+                  }
+                }
+                let note = '';
+                if (h.price === highest) note = '📈 最高价';
+                else if (h.price === lowest) note = '📉 最低价';
+                return `<tr>
+                  <td style="color:#999">${h.date}</td>
+                  <td class="price-cell">${formatPrice(h.price)}</td>
+                  <td>${changeHtml}</td>
+                  <td style="color:#999">${note}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+
+  // 绘制图表
+  setTimeout(() => {
+    const ctx = document.getElementById('priceChart');
+    if (!ctx) return;
+    if (chart) chart.destroy();
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: history.map(h => h.date.slice(5)),
+        datasets: [{
+          label: '价格',
+          data: history.map(h => h.price),
+          borderColor: '#4f46e5',
+          backgroundColor: 'rgba(79,70,229,0.06)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+          pointRadius: 2,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#4f46e5',
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => '¥' + ctx.parsed.y.toFixed(2),
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { maxTicksLimit: 15, font: { size: 10 }, color: '#999' },
+          },
+          y: {
+            grid: { color: '#f0f0f0' },
+            ticks: {
+              font: { size: 10 },
+              color: '#999',
+              callback: v => '¥' + v,
+            },
+          },
+        },
+        interaction: {
+          intersect: false,
+          mode: 'index',
+        },
+      },
+    });
+  }, 50);
+}
+
+// ── 筛选 ──
+function filterProducts() {
+  const search = document.getElementById('searchInput').value;
+  renderProductList(currentFilter, search);
+}
+
+function filterPlatform(platform, btn) {
+  currentFilter = platform;
+  document.querySelectorAll('.platform-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderProductList(currentFilter, document.getElementById('searchInput').value);
+}
+
+// ── 初始化 ──
+renderProductList('all', '');
+// 默认选中第一个商品
+setTimeout(() => selectProduct(PRODUCTS[0].id), 200);
+</script>
+</body>
+</html>
