@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "PriceTracker",
+    "slug": "price-tracker",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "pricetracker",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pricetracker.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.pricetracker.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-notifications"
+    ]
+  }
+}
