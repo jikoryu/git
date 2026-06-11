@@ -334,6 +334,35 @@ async def check_blacklist(url: str, domain: str) -> DimensionResult:
 
     # ── 3. Google Safe Browsing API ──
     gsb_key = config.GOOGLE_SAFE_BROWSING_KEY
+
+    # Demo mode: without API key, check well-known test URLs
+    if not gsb_key:
+        test_urls = [
+            "testsafebrowsing.appspot.com/s/malware",
+            "malware.testing.google.test",
+            "ianfette.org",  # known phishing test domain
+        ]
+        if any(t in url.lower() for t in test_urls):
+            findings.append(Finding(
+                severity="danger",
+                message="Google Safe Browsing 标记为恶意: MALWARE (演示模式)",
+            ))
+            findings.append(Finding(
+                severity="info",
+                message="提示：配置 GOOGLE_SAFE_BROWSING_KEY 环境变量可启用完整 GSB 检测",
+            ))
+            score -= 50
+            score = max(0, min(100, score))
+            status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
+            return DimensionResult(
+                dimension="blacklist",
+                label="域名封禁/黑名单",
+                status=status,
+                score=score,
+                detail=f"黑名单检测完成（演示模式），得分 {score}/100",
+                findings=findings,
+            )
+
     if gsb_key:
         try:
             gsb_url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={gsb_key}"
