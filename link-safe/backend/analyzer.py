@@ -182,16 +182,24 @@ def check_ssl(domain: str) -> DimensionResult:
         score -= 30
     except socket.timeout:
         findings.append(Finding(severity="warn", message="SSL 连接超时"))
-        score -= 15
+        score -= 30
     except ConnectionRefusedError:
-        findings.append(Finding(severity="fail", message="443 端口连接被拒绝，可能未启用 HTTPS"))
-        score -= 20
+        findings.append(Finding(severity="warn", message="443 端口连接被拒绝，该站点未启用 HTTPS"))
+        score -= 40
+    except socket.gaierror:
+        findings.append(Finding(severity="danger", message=f"DNS 解析失败，域名可能不存在"))
+        score -= 50
     except OSError as e:
-        findings.append(Finding(severity="warn", message=f"连接失败: {str(e)[:80]}"))
-        score -= 20
+        msg = str(e)
+        if "getaddrinfo failed" in msg:
+            findings.append(Finding(severity="danger", message="DNS 解析失败，域名可能不存在或已过期"))
+            score -= 50
+        else:
+            findings.append(Finding(severity="warn", message=f"连接失败: {msg[:80]}"))
+            score -= 35
     except Exception as e:
         findings.append(Finding(severity="warn", message=f"SSL 检测异常: {str(e)[:80]}"))
-        score -= 15
+        score -= 25
 
     score = max(0, min(100, score))
     status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
@@ -254,10 +262,15 @@ def check_domain_age(domain: str) -> DimensionResult:
 
     except whois.parser.PywhoisError:
         findings.append(Finding(severity="warn", message="WHOIS 查询无结果，域名可能未注册或已被删除"))
-        score -= 20
+        score -= 30
     except Exception as e:
-        findings.append(Finding(severity="warn", message=f"WHOIS 查询失败: {str(e)[:80]}"))
-        score -= 10
+        msg = str(e)
+        if "No match for" in msg or "NOT FOUND" in msg.upper():
+            findings.append(Finding(severity="danger", message="域名未注册或已被删除"))
+            score -= 45
+        else:
+            findings.append(Finding(severity="warn", message=f"WHOIS 查询失败: {msg[:80]}"))
+            score -= 15
 
     score = max(0, min(100, score))
     status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
@@ -507,8 +520,13 @@ async def check_suspicious_keywords(url: str) -> DimensionResult:
                 score -= 10
 
     except Exception as e:
-        findings.append(Finding(severity="warn", message=f"无法获取页面内容: {str(e)[:80]}"))
-        score -= 15
+        msg = str(e)
+        if "getaddrinfo" in msg or "Name or service not known" in msg:
+            findings.append(Finding(severity="danger", message=f"无法解析域名: {msg[:60]}"))
+            score -= 40
+        else:
+            findings.append(Finding(severity="warn", message=f"无法获取页面内容: {msg[:80]}"))
+            score -= 20
 
     score = max(0, min(100, score))
     status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
@@ -549,10 +567,13 @@ def compute_overall(checks: list[DimensionResult]) -> tuple[int, str, str]:
     elif score >= 55:
         risks = [c.label for c in checks if c.status in ("warn", "fail")]
         summary = f"⚠️ 该网站存在一定风险（{', '.join(risks[:3])}需关注）。请谨慎访问，不要输入个人敏感信息。"
+        risk = "medium"
     elif score >= 30:
         risks = [c.label for c in checks if c.status == "fail"]
         summary = f"🔴 该网站风险较高（{', '.join(risks[:3])}严重异常）。强烈建议不要访问或输入任何信息。"
+        risk = "high"
     else:
+        risk = "critical"
         summary = "🚨 该网站极可能是恶意/钓鱼网站。请立即关闭页面，不要进行任何操作。"
 
     return score, risk, summary
