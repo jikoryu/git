@@ -556,7 +556,24 @@ WEIGHTS = {
 RISK_LABELS = {80: "low", 55: "medium", 30: "high", 0: "critical"}
 
 def compute_overall(checks: list[DimensionResult]) -> tuple[int, str, str]:
-    """Compute weighted overall score and risk level."""
+    """Compute weighted overall score and risk level.
+
+    Google Safe Browsing hit → immediate critical (GSB is Google's threat
+    intelligence; extremely low false-positive rate — no need to weigh other dims).
+    """
+    # GSB override
+    bl = next((c for c in checks if c.dimension == "blacklist"), None)
+    if bl:
+        gsb_hit = any(
+            f.severity == "danger" and "Google Safe Browsing" in f.message
+            for f in bl.findings
+        )
+        if gsb_hit:
+            return 0, "critical", (
+                "🚨 Google Safe Browsing 已确认该链接为恶意网站。"
+                "请立即关闭页面，切勿输入任何个人信息或进行交互。"
+            )
+
     total = sum(WEIGHTS.get(c.dimension, 0.1) * c.score for c in checks)
     weights_sum = sum(WEIGHTS.get(c.dimension, 0.1) for c in checks)
     score = round(total / weights_sum) if weights_sum > 0 else 0
