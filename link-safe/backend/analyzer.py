@@ -236,7 +236,7 @@ def check_domain_age(domain: str) -> DimensionResult:
 
         if created is None:
             findings.append(Finding(severity="warn", message="无法获取域名注册日期（WHOIS 隐私保护）"))
-            score -= 10
+            score -= 25
         else:
             now = datetime.datetime.now(datetime.timezone.utc)
             if created.tzinfo is None:
@@ -261,16 +261,16 @@ def check_domain_age(domain: str) -> DimensionResult:
             findings.append(Finding(severity="info", message=f"注册商: {registrar}"))
 
     except whois.parser.PywhoisError:
-        findings.append(Finding(severity="warn", message="WHOIS 查询无结果，域名可能未注册或已被删除"))
-        score -= 30
+        findings.append(Finding(severity="danger", message="WHOIS 查询无结果，域名可能未注册或已被删除"))
+        score -= 40
     except Exception as e:
         msg = str(e)
         if "No match for" in msg or "NOT FOUND" in msg.upper():
             findings.append(Finding(severity="danger", message="域名未注册或已被删除"))
-            score -= 45
+            score -= 50
         else:
             findings.append(Finding(severity="warn", message=f"WHOIS 查询失败: {msg[:80]}"))
-            score -= 15
+            score -= 25
 
     score = max(0, min(100, score))
     status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
