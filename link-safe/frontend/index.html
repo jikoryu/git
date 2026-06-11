@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Link Safe — 链接安全检测</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0b1121;color:#e2e8f0;min-height:100vh}
+.home{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px}
+.home-card{text-align:center;max-width:520px;width:100%}
+.home-card .shield{font-size:56px;margin-bottom:12px}
+.home-card h1{font-size:32px;font-weight:800;color:#fff}.home-card h1 span{background:linear-gradient(135deg,#38bdf8,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.home-card .desc{font-size:14px;color:#64748b;margin:8px 0 28px}
+.input-group{display:flex;gap:8px;background:#1e293b;border-radius:14px;padding:6px;border:2px solid #334155;transition:border-color .2s}
+.input-group:focus-within{border-color:#6366f1}
+.input-group input{flex:1;height:52px;background:none;border:none;padding:0 16px;font-size:15px;color:#fff;outline:none}
+.input-group input::placeholder{color:#475569}
+.input-group button{height:52px;padding:0 28px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap}
+.input-group button:hover{opacity:.9}
+.dim-list{margin-top:28px;text-align:left}.dim-list .item{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:13px;color:#64748b}.dim-list .item .n{width:22px;height:22px;border-radius:50%;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:11px;color:#6366f1;flex-shrink:0}
+/* result */
+.result{display:none}
+.result-header{background:#1e293b;border-bottom:1px solid#334155;padding:14px 24px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:10}
+.result-header button{background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer}
+.result-body{max-width:900px;margin:0 auto;padding:24px 20px 60px}
+/* score */
+.score-section{text-align:center;margin-bottom:28px}
+.score-ring{width:130px;height:130px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:40px;font-weight:800}
+.score-ring.low{border:4px solid#22c55e;color:#22c55e;box-shadow:0 0 30px rgba(34,197,94,.12)}.score-ring.medium{border:4px solid#f59e0b;color:#f59e0b;box-shadow:0 0 30px rgba(245,158,11,.12)}.score-ring.high{border:4px solid#f97316;color:#f97316;box-shadow:0 0 30px rgba(249,115,22,.12)}.score-ring.critical{border:4px solid#ef4444;color:#ef4444;box-shadow:0 0 30px rgba(239,68,68,.15)}
+.risk-text{font-size:18px;font-weight:700}.risk-text.low{color:#22c55e}.risk-text.medium{color:#f59e0b}.risk-text.high{color:#f97316}.risk-text.critical{color:#ef4444}
+.summary-text{font-size:13px;color:#94a3b8;margin-top:8px;max-width:550px;margin-left:auto;margin-right:auto;line-height:1.6}
+.url-bar{background:#1e293b;border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#64748b;word-break:break-all;font-family:monospace}
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.card{background:#1e293b;border-radius:12px;padding:18px;border:1px solid #334155}
+.card .card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.card .card-title{font-size:14px;font-weight:600}
+.card .card-score{font-size:22px;font-weight:800}
+.card .card-score.pass{color:#22c55e}.card .card-score.warn{color:#f59e0b}.card .card-score.fail{color:#ef4444}
+.card .finding{display:flex;align-items:flex-start;gap:8px;padding:6px 0;font-size:12px;color:#94a3b8;border-bottom:1px solid#1a2332}
+.card .finding:last-child{border:none}
+.card .finding .dot{width:6px;height:6px;border-radius:50%;margin-top:6px;flex-shrink:0}.dot.info{background:#38bdf8}.dot.warn{background:#f59e0b}.dot.danger{background:#ef4444}
+.loading{text-align:center;padding:60px 20px}.spinner{width:44px;height:44px;border:3px solid#334155;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 20px}@keyframes spin{to{transform:rotate(360deg)}}
+.loading .step{color:#6366f1;font-size:13px;margin-top:6px}
+.error-box{background:#450a0a;border:1px solid#7f1d1d;border-radius:14px;padding:32px;text-align:center;max-width:480px;margin:60px auto}.error-box p{color:#fca5a5;font-size:14px}
+.btn-back{display:inline-block;margin-top:12px;padding:8px 20px;background:#1e293b;color:#94a3b8;border:1px solid#334155;border-radius:8px;cursor:pointer;font-size:13px}
+@media(max-width:640px){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="home" id="homeScreen">
+  <div class="home-card">
+    <div class="shield">🛡</div>
+    <h1>Link <span>Safe</span></h1>
+    <p class="desc">从 6 个维度检测网站安全风险</p>
+    <div class="input-group">
+      <input type="text" id="urlInput" placeholder="输入网址，例如 https://example.com" autofocus>
+      <button onclick="scan()">开始检测</button>
+    </div>
+    <div class="dim-list">
+      <div class="item"><span class="n">1</span>URL 合法性</div>
+      <div class="item"><span class="n">2</span>SSL 证书有效性</div>
+      <div class="item"><span class="n">3</span>域名年龄</div>
+      <div class="item"><span class="n">4</span>域名封禁/黑名单</div>
+      <div class="item"><span class="n">5</span>短链接展开</div>
+      <div class="item"><span class="n">6</span>可疑关键词</div>
+    </div>
+  </div>
+</div>
+
+<div class="result" id="resultScreen">
+  <div class="result-header">
+    <button onclick="goHome()">←</button><span style="font-weight:600">🛡 Link Safe 检测报告</span>
+  </div>
+  <div class="result-body" id="resultBody"></div>
+</div>
+
+<script>
+const DIMS = [
+  {key:'url_validity',label:'URL 合法性',n:1},
+  {key:'ssl',label:'SSL 证书',n:2},
+  {key:'domain_age',label:'域名年龄',n:3},
+  {key:'blacklist',label:'域名封禁/黑名单',n:4},
+  {key:'short_link',label:'短链接展开',n:5},
+  {key:'suspicious_words',label:'可疑关键词',n:6},
+];
+const RISK_LABEL={low:'✅ 低风险',medium:'⚠️ 中等风险',high:'🔴 高风险',critical:'🚨 严重风险'};
+
+async function scan(u){
+  if(!u)u=document.getElementById('urlInput').value.trim();
+  if(!u)return;
+  document.getElementById('homeScreen').style.display='none';
+  document.getElementById('resultScreen').style.display='block';
+  document.getElementById('resultBody').innerHTML=
+    `<div class="loading"><div class="spinner"></div><p style="color:#94a3b8">正在检测...</p>
+    ${DIMS.map(d=>`<p class="step">${d.n}. ${d.label}</p>`).join('')}</div>`;
+
+  try{
+    const r=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:u})});
+    if(!r.ok)throw new Error(r.status+' '+r.statusText);
+    render(await r.json());
+  }catch(e){
+    document.getElementById('resultBody').innerHTML=
+      `<div class="error-box"><p>⚠️ 检测失败</p><p style="font-size:13px;color:#f87171">${esc(e.message)}</p>
+      <button class="btn-back" onclick="goHome()">返回重试</button></div>`;
+  }
+}
+
+function render(r){
+  const emoji={pass:'✓',warn:'!',fail:'✗'};
+  document.getElementById('resultBody').innerHTML=`
+    <div class="score-section">
+      <div class="score-ring ${r.risk_level}">${r.overall_score}</div>
+      <div class="risk-text ${r.risk_level}">${RISK_LABEL[r.risk_level]}</div>
+      <p class="summary-text">${esc(r.summary)}</p>
+    </div>
+    <div class="url-bar">🔗 ${esc(r.url)}${r.final_url!==r.url?' → '+esc(r.final_url):''}</div>
+    <div class="cards">${r.checks.map(c=>`
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">${c.label}</span>
+          <span class="card-score ${c.status}">${c.score}</span>
+        </div>
+        ${c.findings.map(f=>`
+          <div class="finding">
+            <div class="dot ${f.severity}"></div>
+            <span>${esc(f.message)}</span>
+          </div>`).join('')}
+      </div>`).join('')}</div>
+    <button class="btn-back" onclick="goHome()" style="margin-top:24px">← 检测新网址</button>`;
+  window.scrollTo(0,0);
+}
+
+function goHome(){
+  document.getElementById('resultScreen').style.display='none';
+  document.getElementById('homeScreen').style.display='flex';
+  document.getElementById('urlInput').focus();
+}
+function esc(s){const d=document.createElement('div');d.textContent=(s||'').toString();return d.innerHTML}
+document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')scan()});
+</script>
+</body>
+</html>
