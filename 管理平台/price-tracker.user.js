@@ -1,14 +1,28 @@
 // ==UserScript==
-// @name         商品价格走势查询
+// @name         Amazon 价格走势查询
 // @namespace    https://github.com/jikoryu/git
-// @version      1.0
-// @description  在京东/淘宝/拼多多商品页面注入按钮，一键查看30天价格走势
+// @version      2.1
+// @description  在 Amazon 商品页面提取真实价格，一键查看历史走势
 // @author       jikoryu
+// @match        https://www.amazon.com/*
+// @match        https://www.amazon.co.jp/*
+// @match        https://www.amazon.co.uk/*
+// @match        https://www.amazon.de/*
+// @match        https://www.amazon.fr/*
+// @match        https://www.amazon.ca/*
+// @match        https://www.amazon.it/*
+// @match        https://www.amazon.es/*
+// @match        https://www.amazon.com.au/*
+// @match        https://www.amazon.in/*
+// @match        https://www.amazon.com.br/*
+// @match        https://www.amazon.com.mx/*
+// @match        https://www.amazon.nl/*
+// @match        https://www.amazon.se/*
+// @match        https://www.amazon.sg/*
 // @match        https://item.jd.com/*
 // @match        https://item.taobao.com/*
 // @match        https://detail.tmall.com/*
 // @match        https://mobile.yangkeduo.com/goods*.html*
-// @match        https://www.pinduoduo.com/goods*.html*
 // @grant        GM_openInTab
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -18,135 +32,261 @@
 (function() {
   'use strict';
 
-  // ═══════════════════════════════════════
-  // 配置：价格走势工具地址
-  // ═══════════════════════════════════════
   const TOOL_URL = 'http://localhost:8888';
 
-  // ═══════════════════════════════════════
-  // 检测是否为商品详情页
-  // ═══════════════════════════════════════
-  function isProductPage() {
-    const url = location.href;
-    // 京东商品页
-    if (/item\.jd\.com\/\d+\.html/.test(url)) return true;
-    // 淘宝商品页
-    if (/item\.taobao\.com\/item\.htm/.test(url) && /[?&]id=\d+/.test(url)) return true;
-    // 天猫商品页
-    if (/detail\.tmall\.com\/item\.htm/.test(url)) return true;
-    // 拼多多商品页
-    if (/goods\.html/.test(url) && /goods_id=\d+/.test(url)) return true;
-    return false;
-  }
+  const HOST = location.hostname;
+  let PLATFORM = null;
+  if (/amazon\./.test(HOST)) PLATFORM = 'amazon';
+  else if (/jd\.com/.test(HOST)) PLATFORM = 'jd';
+  else if (/taobao\.com|tmall\.com/.test(HOST)) PLATFORM = 'taobao';
+  else if (/pinduoduo\.com|yangkeduo\.com/.test(HOST)) PLATFORM = 'pdd';
+  else PLATFORM = null;
+
+  const COLORS = {
+    amazon: '#FF9900',
+    jd: '#E2231A',
+    taobao: '#FF5000',
+    pdd: '#E02E24',
+  };
 
   // ═══════════════════════════════════════
-  // 获取平台名称
+  // 从页面 DOM 提取真实商品信息
   // ═══════════════════════════════════════
-  function getPlatform() {
-    const host = location.hostname;
-    if (/jd\.com/.test(host)) return '京东';
-    if (/taobao\.com/.test(host)) return '淘宝';
-    if (/tmall\.com/.test(host)) return '天猫';
-    if (/pinduoduo\.com|yangkeduo\.com/.test(host)) return '拼多多';
-    return '电商';
+  function extractProductInfo() {
+    const info = { title: '', price: '', image: '', shop: '', url: location.href.split('?')[0] };
+
+    if (PLATFORM === 'amazon') {
+      // ── Amazon ──
+      // 标题
+      const titleEl =
+        document.querySelector('#productTitle') ||
+        document.querySelector('#title') ||
+        document.querySelector('[data-automation-id="title"]');
+      if (titleEl) info.title = titleEl.textContent.trim();
+
+      // 价格 — 多个备选
+      // Amazon 价格通常在 .a-price .a-offscreen 里，格式 "$1,299.99"
+      const priceEl =
+        document.querySelector('.a-price .a-offscreen') ||
+        document.querySelector('.a-price[data-a-size="xl"] .a-offscreen') ||
+        document.querySelector('#price_inside_buybox') ||
+        document.querySelector('.a-price-whole');
+      if (priceEl) {
+        let raw = priceEl.textContent.trim();
+        // 如果取到 .a-price-whole（只有整数部分），尝试找 fraction
+        if (priceEl.classList.contains('a-price-whole')) {
+          const fracEl = priceEl.parentElement?.querySelector('.a-price-fraction');
+          if (fracEl) raw += '.' + fracEl.textContent.trim();
+        }
+        // 清理货币符号
+        raw = raw.replace(/[^0-9.,]/g, '').replace(',', '');
+        const m = raw.match(/(\d+\.?\d*)/);
+        if (m) info.price = m[1];
+      }
+
+      // 如果没有 offscreen，试试 corePriceDisplay
+      if (!info.price) {
+        const corePrice = document.querySelector('#corePriceDisplay_desktop_feature_div .a-price-whole');
+        if (corePrice) {
+          let raw = corePrice.textContent.trim();
+          const frac = document.querySelector('#corePriceDisplay_desktop_feature_div .a-price-fraction');
+          if (frac) raw += '.' + frac.textContent.trim();
+          raw = raw.replace(/[^0-9.]/g, '');
+          const m = raw.match(/(\d+\.?\d*)/);
+          if (m) info.price = m[1];
+        }
+      }
+
+      // 图片
+      const imgEl =
+        document.querySelector('#landingImage') ||
+        document.querySelector('#imgTagWrapper img') ||
+        document.querySelector('.imgTagWrapper img') ||
+        document.querySelector('#main-image') ||
+        document.querySelector('[data-old-hires]');
+      if (imgEl) {
+        info.image = imgEl.src || imgEl.getAttribute('data-old-hires') || '';
+      }
+
+      // 店铺
+      const shopEl =
+        document.querySelector('#bylineInfo') ||
+        document.querySelector('#brand') ||
+        document.querySelector('[data-feature-name="bylineInfo"]');
+      if (shopEl) {
+        info.shop = shopEl.textContent.replace(/Visit the |Brand: |Store: /gi, '').trim();
+      }
+
+    } else if (PLATFORM === 'jd') {
+      // ── 京东 ──
+      const titleEl = document.querySelector('.sku-name') || document.querySelector('title');
+      if (titleEl) {
+        info.title = titleEl.textContent
+          .replace(/京东\(JD\.COM\).*?[-–—]/g, '').replace(/【.*?】$/, '').trim();
+      }
+
+      const priceEl = document.querySelector('.summary-price .price') ||
+                      document.querySelector('.p-price span');
+      if (priceEl) {
+        const m = priceEl.textContent.replace(/[¥￥,\s]/g, '').match(/(\d+\.?\d*)/);
+        if (m) info.price = m[1];
+      }
+
+      const imgEl = document.querySelector('#spec-img');
+      if (imgEl) info.image = imgEl.src || imgEl.getAttribute('data-origin') || '';
+
+      const shopEl = document.querySelector('.J-hove-wrap .name a') || document.querySelector('.shop-name');
+      if (shopEl) info.shop = shopEl.textContent.trim();
+
+    } else if (PLATFORM === 'taobao') {
+      // ── 淘宝/天猫 ──
+      const titleEl = document.querySelector('.tb-main-title') || document.querySelector('h1');
+      if (titleEl) info.title = titleEl.textContent.trim();
+
+      const priceEl = document.querySelector('.tb-rmb-num') || document.querySelector('.tm-price');
+      if (priceEl) {
+        const m = priceEl.textContent.replace(/[¥￥,\s]/g, '').match(/(\d+\.?\d*)/);
+        if (m) info.price = m[1];
+      }
+
+      const imgEl = document.querySelector('#J_ImgBooth') || document.querySelector('.tb-main-pic img');
+      if (imgEl) info.image = imgEl.src || '';
+
+      const shopEl = document.querySelector('.tb-shop-name');
+      if (shopEl) info.shop = shopEl.textContent.trim();
+
+    } else if (PLATFORM === 'pdd') {
+      // ── 拼多多 ──
+      const titleEl = document.querySelector('.goods-name') || document.querySelector('h1');
+      if (titleEl) info.title = titleEl.textContent.trim();
+
+      const priceEl = document.querySelector('.goods-price') || document.querySelector('.current-price');
+      if (priceEl) {
+        const m = priceEl.textContent.replace(/[¥￥,\s]/g, '').match(/(\d+\.?\d*)/);
+        if (m) info.price = m[1];
+      }
+
+      const imgEl = document.querySelector('.goods-img img');
+      if (imgEl) info.image = imgEl.src || '';
+
+      const shopEl = document.querySelector('.mall-name') || document.querySelector('.shop-name');
+      if (shopEl) info.shop = shopEl.textContent.trim();
+    }
+
+    // 兜底：始终从 document.title 提取
+    if (!info.title) {
+      info.title = document.title.split(/[-–—:|]/)[0].trim() || document.title;
+    }
+
+    return info;
   }
 
   // ═══════════════════════════════════════
   // 注入浮动按钮
   // ═══════════════════════════════════════
   function injectButton() {
-    // 避免重复注入
-    if (document.getElementById('__price_tracker_btn__')) return;
+    if (document.getElementById('__pt_btn__')) return;
 
-    const platform = getPlatform();
-    const colors = { '京东':'#E2231A', '淘宝':'#FF5000', '天猫':'#FF5000', '拼多多':'#E02E24' };
-    const color = colors[platform] || '#4f46e5';
+    const color = COLORS[PLATFORM] || '#4f46e5';
+    const label = PLATFORM === 'amazon' ? '📉 View Price History' : '📉 查看价格走势';
 
     const btn = document.createElement('div');
-    btn.id = '__price_tracker_btn__';
-    btn.innerHTML = '📉 查看价格走势';
-    btn.title = '点击查看该商品近30天价格走势';
+    btn.id = '__pt_btn__';
+    btn.textContent = label;
+    btn.title = '从当前页面提取真实价格，查看历史走势';
 
-    // 样式：右下角悬浮按钮
     Object.assign(btn.style, {
-      position: 'fixed',
-      bottom: '24px',
-      right: '24px',
-      zIndex: '999999',
-      padding: '14px 22px',
-      background: `linear-gradient(135deg, ${color}, #6366f1)`,
-      color: '#fff',
-      fontSize: '15px',
-      fontWeight: '700',
-      borderRadius: '14px',
-      cursor: 'pointer',
-      boxShadow: '0 4px 20px rgba(79,70,229,0.35)',
-      transition: 'all 0.2s ease',
-      letterSpacing: '0.5px',
-      userSelect: 'none',
-      fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+      position:'fixed', bottom:'24px', right:'24px', zIndex:'9999999',
+      padding:'14px 22px', background:`linear-gradient(135deg, ${color}, #6366f1)`,
+      color:'#fff', fontSize:'15px', fontWeight:'700', borderRadius:'14px',
+      cursor:'pointer', boxShadow:'0 4px 24px rgba(79,70,229,0.4)',
+      transition:'all 0.2s ease', letterSpacing:'0.3px', userSelect:'none',
+      fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
     });
 
-    // Hover 效果
     btn.addEventListener('mouseenter', () => {
       btn.style.transform = 'translateY(-2px)';
-      btn.style.boxShadow = '0 6px 28px rgba(79,70,229,0.45)';
+      btn.style.boxShadow = '0 8px 32px rgba(79,70,229,0.5)';
     });
     btn.addEventListener('mouseleave', () => {
       btn.style.transform = 'translateY(0)';
-      btn.style.boxShadow = '0 4px 20px rgba(79,70,229,0.35)';
+      btn.style.boxShadow = '0 4px 24px rgba(79,70,229,0.4)';
     });
 
-    // 点击事件
     btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
+      showLoading();
+      const info = extractProductInfo();
 
-      const productUrl = location.href;
-      const targetUrl = `${TOOL_URL}/?url=${encodeURIComponent(productUrl)}`;
+      const params = new URLSearchParams();
+      params.set('url', location.href);
+      params.set('source', 'client');
+      if (info.title) params.set('title', info.title);
+      if (info.price) params.set('price', info.price);
+      if (info.image) params.set('image', info.image);
+      if (info.shop) params.set('shop', info.shop);
+      params.set('platform', PLATFORM);
 
-      // 使用 GM_openInTab（Tampermonkey API）打开新标签页
+      const targetUrl = `${TOOL_URL}/?${params.toString()}`;
+
       if (typeof GM_openInTab === 'function') {
         GM_openInTab(targetUrl, { active: true });
       } else {
         window.open(targetUrl, '_blank');
       }
+      hideLoading();
+
+      const count = (parseInt(GM_getValue('usage_count', '0'), 10) || 0) + 1;
+      GM_setValue('usage_count', String(count));
     });
 
     document.body.appendChild(btn);
+  }
 
-    // 记录使用次数
-    const count = (parseInt(GM_getValue('usage_count', '0'), 10) || 0) + 1;
-    GM_setValue('usage_count', String(count));
+  // 提取时短暂显示进度
+  function showLoading() {
+    const btn = document.getElementById('__pt_btn__');
+    if (btn) btn.textContent = '提取中...';
+  }
+  function hideLoading() {
+    const btn = document.getElementById('__pt_btn__');
+    const label = PLATFORM === 'amazon' ? '📉 View Price History' : '📉 查看价格走势';
+    if (btn) btn.textContent = label;
   }
 
   // ═══════════════════════════════════════
-  // 主入口
+  // 确保在商品详情页才注入
   // ═══════════════════════════════════════
-  if (isProductPage()) {
-    // 等待页面加载完成后再注入（有些电商页面是 SPA）
-    const tryInject = () => {
-      if (document.body) {
-        injectButton();
-      } else {
-        setTimeout(tryInject, 500);
-      }
-    };
-
-    // 立即尝试 + 延迟重试（处理 SPA 路由切换）
-    tryInject();
-    setTimeout(tryInject, 2000);
-
-    // 监听 URL 变化（SPA 切换商品时重新注入）
-    let lastUrl = location.href;
-    new MutationObserver(() => {
-      if (location.href !== lastUrl) {
-        lastUrl = location.href;
-        const old = document.getElementById('__price_tracker_btn__');
-        if (old) old.remove();
-        setTimeout(tryInject, 1500);
-      }
-    }).observe(document, { subtree: true, childList: true });
+  function isProductPage() {
+    if (PLATFORM === 'amazon') {
+      // Amazon 商品页特征: 有 #productTitle 或 #title 且 URL 包含 /dp/ 或 /gp/product/
+      return (!!document.querySelector('#productTitle') || !!document.querySelector('#title')) &&
+             (/\/dp\//.test(location.href) || /\/gp\/product\//.test(location.href) || /\/product\//.test(location.href));
+    }
+    // 其他平台 — 已经在 @match 里限定，基本就是商品页
+    return true;
   }
+
+  function tryInject() {
+    if (!isProductPage()) return;
+    if (document.body) { injectButton(); }
+    else { setTimeout(tryInject, 500); }
+  }
+
+  tryInject();
+  // Amazon 有时 SPA 切换，延迟重试
+  setTimeout(tryInject, 2000);
+  setTimeout(tryInject, 4000);
+
+  // URL 变化监听
+  let lastUrl = location.href;
+  new MutationObserver(() => {
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      const old = document.getElementById('__pt_btn__');
+      if (old) old.remove();
+      setTimeout(tryInject, 2000);
+    }
+  }).observe(document, { subtree: true, childList: true });
 
 })();
