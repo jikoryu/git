@@ -42,18 +42,20 @@ async def analyze(data: AnalyzeRequest):
     if not domain:
         raise HTTPException(400, "无法解析 URL")
 
-    # Run the 4 synchronous checks in a thread pool
+    # Run the 3 synchronous checks in a thread pool
     loop = asyncio.get_event_loop()
-    url_check, ssl_check, age_check, bl_check = await asyncio.gather(
+    url_check, ssl_check, age_check = await asyncio.gather(
         loop.run_in_executor(None, check_url_validity, url),
         loop.run_in_executor(None, check_ssl, domain),
         loop.run_in_executor(None, check_domain_age, domain),
-        loop.run_in_executor(None, check_blacklist, domain),
     )
 
-    # Run the 2 async checks (need HTTP)
-    short_check = await check_short_link(url)
-    keyword_check = await check_suspicious_keywords(url)
+    # Run the 3 async checks (need HTTP / Google Safe Browsing)
+    bl_check, short_check, keyword_check = await asyncio.gather(
+        check_blacklist(url, domain),
+        check_short_link(url),
+        check_suspicious_keywords(url),
+    )
 
     checks = [url_check, ssl_check, age_check, bl_check, short_check, keyword_check]
     score, risk, summary = compute_overall(checks)

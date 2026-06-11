@@ -286,7 +286,10 @@ BLACKLIST_PATTERNS = [
     r".*-security.*\.loan$",
 ]
 
-def check_blacklist(domain: str) -> DimensionResult:
+async def check_blacklist(url: str, domain: str) -> DimensionResult:
+    import httpx
+    from config import config
+
     findings = []
     score = 100
 
@@ -297,7 +300,7 @@ def check_blacklist(domain: str) -> DimensionResult:
             findings=[Finding(severity="danger", message="无效的域名")]
         )
 
-    # Check against built-in patterns
+    # ── 1. Local blacklist patterns ──
     matched = False
     for pattern in BLACKLIST_PATTERNS:
         if re.match(pattern, domain, re.IGNORECASE):
@@ -308,13 +311,53 @@ def check_blacklist(domain: str) -> DimensionResult:
     if not matched:
         findings.append(Finding(severity="info", message="未匹配本地黑名单模式"))
 
-    # Check for suspicious keyword combinations in domain
+    # ── 2. Suspicious keyword combinations ──
     domain_lower = domain.lower()
     danger_words = ["secure", "verify", "login", "account", "bank", "paypal", "appleid", "update", "confirm"]
     hit_count = sum(1 for w in danger_words if w in domain_lower)
     if hit_count >= 2:
         findings.append(Finding(severity="warn", message=f"域名包含 {hit_count} 个敏感关键词，可能伪装为合法服务"))
         score -= 15
+
+    # ── 3. Google Safe Browsing API ──
+    gsb_key = config.GOOGLE_SAFE_BROWSING_KEY
+    if gsb_key:
+        try:
+            gsb_url = f"https://safebrowsing.googleapis.com/v4/threatMatches:find?key={gsb_key}"
+            gsb_body = {
+                "client": {"clientId": "link-safe", "clientVersion": "1.0"},
+                "threatInfo": {
+                    "threatTypes": [
+                        "MALWARE",
+                        "SOCIAL_ENGINEERING",
+                        "UNWANTED_SOFTWARE",
+                        "POTENTIALLY_HARMFUL_APPLICATION",
+                    ],
+                    "platformTypes": ["ANY_PLATFORM"],
+                    "threatEntryTypes": ["URL"],
+                    "threatEntries": [{"url": url}],
+                },
+            }
+            async with httpx.AsyncClient(timeout=10) as client:
+                gsb_resp = await client.post(gsb_url, json=gsb_body)
+                if gsb_resp.status_code == 200:
+                    gsb_data = gsb_resp.json()
+                    matches = gsb_data.get("matches", [])
+                    if matches:
+                        threats = {m.get("threatType", "UNKNOWN") for m in matches}
+                        findings.append(Finding(
+                            severity="danger",
+                            message=f"Google Safe Browsing 标记为恶意: {', '.join(threats)}"
+                        ))
+                        score -= 50
+                    else:
+                        findings.append(Finding(severity="info", message="Google Safe Browsing: 安全，未列入黑名单"))
+                elif gsb_resp.status_code == 400:
+                    findings.append(Finding(severity="info", message="Google Safe Browsing: API key 无效，已跳过"))
+        except Exception as e:
+            findings.append(Finding(severity="warn", message=f"Google Safe Browsing 查询失败: {str(e)[:60]}"))
+    else:
+        findings.append(Finding(severity="info", message="未配置 Google Safe Browsing API key，跳过云端黑名单检测"))
 
     score = max(0, min(100, score))
     status = "pass" if score >= 80 else ("warn" if score >= 50 else "fail")
